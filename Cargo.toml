@@ -1,19 +1,25 @@
 [package]
-name = "awesome-bot"
-version = "0.1.0"
-authors = ["Rock Neurotiko <miguelglafuente@gmail.com>"]
-license = "MIT or Apache-2.0 or Beerware"
-
+authors = [
+    "Rock Neurotiko <miguelglafuente@gmail.com>",
+    "Berkus Decker <berkus+cargo@metta.systems",
+]
 description = "An awesome framework to build Telegram bots up to telegram-bot library."
-readme = "README.md"
 documentation = "http://web.neurotiko.com/awesome-bot/awesome_bot"
-
+keywords = [
+    "telegram",
+    "bot",
+    "api",
+    "library",
+    "framework",
+]
+license = "MIT or Apache-2.0 or Beerware"
+name = "awesome-bot"
+readme = "README.md"
 repository = "https://github.com/rockneurotiko/awesome-bot"
-keywords = ["telegram", "bot", "api", "library", "framework"]
-
+version = "0.2.0"
 
 [dependencies]
-telegram-bot = "0.4.2"
+regex = "1.0.*"
 rustc-serialize = "0.3.*"
-regex = "0.1.*"
 scoped_threadpool = "0.1.*"
+telegram-bot = "0.6.1"

@@ -76,6 +76,7 @@ extern crate regex;
 extern crate rustc_serialize;
 extern crate scoped_threadpool;
 extern crate telegram_bot;
+extern crate tokio_core;
 
 mod send;
 mod test;
@@ -84,11 +85,11 @@ pub use send::*;
 
 pub use telegram_bot::*;
 
-use scoped_threadpool::Pool;
-
 use regex::Regex;
+use scoped_threadpool::Pool;
 use std::env;
 use std::sync::Arc;
+use tokio_core::reactor;
 
 /// Represents audio and voice, this is used in `all_music_fn` handler.
 pub enum GeneralSound {
@@ -203,8 +204,8 @@ impl AwesomeBot {
     /// Creates a new bot with the given token. This checks that the token is a
     /// valid Telegram Bot Token by calling `get_me`.
     /// It panics if the token is invalid.
-    pub fn new(token: &str) -> AwesomeBot {
-        let bot = Api::from_token(token).unwrap();
+    pub fn new(handle: &reactor::Handle, token: &str) -> AwesomeBot {
+        let bot = Api::from_token(handle, token).unwrap();
         match bot.get_me() {
             Ok(user) => AwesomeBot {
                 bot: bot,
@@ -218,12 +219,12 @@ impl AwesomeBot {
 
     /// Will receive the Bot Token from the environment variable `var` and call `new`.
     /// It panics if the environment variable can't be read or if the token is invalid.
-    pub fn from_env(var: &str) -> AwesomeBot {
+    pub fn from_env(handle: &reactor::Handle, var: &str) -> AwesomeBot {
         let token = env::var(var)
             .ok()
             .expect(&format!("Environment variable {} error.", var));
 
-        Self::new(&token)
+        Self::new(handle, &token)
     }
 
     // Listener functions
@@ -441,7 +442,7 @@ impl AwesomeBot {
 
     fn handle_message(&self, message: Message) {
         // use MessageType::*; // When nightly becomes stable?
-        use telegram_bot::MessageType::*;
+        use telegram_bot::MessageKind::*;
         // // Any message
         // let anybot = bot.clone();
         // let anym = m.clone();
