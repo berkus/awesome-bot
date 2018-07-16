@@ -1,9 +1,9 @@
 use failure::Error;
-use rustc_serialize::Decodable;
 use telegram_bot::*;
 
 /// Help trait indicating that at least the `end` method is implemented for the SendBuilder structs
-pub trait Finisher<T: Decodable> {
+pub trait Finisher<T> {
+    /*T: Decodable*/
     fn end(&mut self) -> Result<T, Error>;
 }
 
@@ -40,7 +40,7 @@ impl SendBuilder {
 
     /// Start a photo constructor to send.
     pub fn photo(self, t: &str) -> SendPhoto {
-        SendPhoto {
+        SendChatAction {
             send: self,
             photo: t.to_string(),
             caption: None,

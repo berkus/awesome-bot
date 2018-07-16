@@ -72,9 +72,8 @@
 //! You have more examples in `examples/` directory in the project's repository.
 //!
 
+extern crate failure;
 extern crate regex;
-extern crate rustc_serialize;
-extern crate scoped_threadpool;
 extern crate telegram_bot;
 extern crate tokio_core;
 
@@ -83,10 +82,15 @@ mod test;
 
 pub use send::*;
 
-pub use telegram_bot::*;
+pub use telegram_bot::Api;
+use telegram_bot::{
+    Audio, Chat, ChatAction, /*this one is missing from public API - omission? , VideoNote*/
+    Contact, Document, Message, PhotoSize, Sticker, User, Video, Voice,
+};
+use telegram_bot::{Float, Integer};
 
+use failure::Error;
 use regex::Regex;
-use scoped_threadpool::Pool;
 use std::env;
 use std::sync::Arc;
 use tokio_core::reactor;
@@ -110,6 +114,7 @@ enum Muxer {
     ),
     PhotoMux(Arc<Fn(&AwesomeBot, &Message, Vec<PhotoSize>) + Send + Sync + 'static>),
     VideoMux(Arc<Fn(&AwesomeBot, &Message, Video) + Send + Sync + 'static>),
+    // VideoNoteMux(Arc<Fn(&AwesomeBot, &Message, VideoNote) + Send + Sync + 'static>),
     DocumentMux(Arc<Fn(&AwesomeBot, &Message, Document) + Send + Sync + 'static>),
     StickerMux(Arc<Fn(&AwesomeBot, &Message, Sticker) + Send + Sync + 'static>),
     AudioMux(Arc<Fn(&AwesomeBot, &Message, Audio) + Send + Sync + 'static>),
@@ -229,27 +234,29 @@ impl AwesomeBot {
 
     // Listener functions
 
-    /// Start the bot using `getUpdates` method, calling the routes defined before calling this method.
-    pub fn simple_start(&self) -> Result<()> {
-        let mut listener = self.bot.listener(ListeningMethod::LongPoll(Some(20)));
-        let mut pool = Pool::new(4);
-        // let botcloned = Arc::new(self.clone());
+    /// Start the bot, calling the routes defined before calling this method.
+    /// Returns the future that the client should run on a tokio reactor.
+    pub fn start(&self) -> Result<(), Error> {
+        Ok(())
+        // let mut listener = self.bot.listener(ListeningMethod::LongPoll(Some(20)));
+        // let mut pool = Pool::new(4);
+        // // let botcloned = Arc::new(self.clone());
 
-        pool.scoped(|scoped| {
-            // Handle updates
-            let result = listener.listen(|u| {
-                if let Some(m) = u.message {
-                    // let bot_instance = botcloned.clone();
-                    scoped.execute(move || {
-                        // bot_instance.handle_message(m);
-                        self.handle_message(m);
-                    });
-                }
-                Ok(ListeningAction::Continue)
-            });
-            scoped.join_all(); // Wait all scoped threads to finish
-            result
-        })
+        // pool.scoped(|scoped| {
+        //     // Handle updates
+        //     let result = listener.listen(|u| {
+        //         if let Some(m) = u.message {
+        //             // let bot_instance = botcloned.clone();
+        //             scoped.execute(move || {
+        //                 // bot_instance.handle_message(m);
+        //                 self.handle_message(m);
+        //             });
+        //         }
+        //         Ok(ListeningAction::Continue)
+        //     });
+        //     scoped.join_all(); // Wait all scoped threads to finish
+        //     result
+        // })
     }
 
     // Send builders
@@ -339,6 +346,13 @@ impl AwesomeBot {
                      [&VideoMux(ref f) => f(self, msg, video.clone())]
                      );
     }
+
+    // fn handle_videonote_msg(&self, msg: &Message, video: VideoNote) {
+    //     use Muxer::*;
+    //     muxer_match!(self, msg,
+    //                  [&VideoNoteMux(ref f) => f(self, msg, video.clone())]
+    //                  );
+    // }
 
     fn handle_document_msg(&self, msg: &Message, document: Document) {
         use Muxer::*;
@@ -443,33 +457,46 @@ impl AwesomeBot {
     fn handle_message(&self, message: Message) {
         // use MessageType::*; // When nightly becomes stable?
         use telegram_bot::MessageKind::*;
-        // // Any message
-        // let anybot = bot.clone();
-        // let anym = m.clone();
-        // thread::spawn(move || {
-        //     anybot.handle_any_msg(anym);
-        // });
-
-        // Rest of messages :)
-        match message.msg.clone() {
-            Text(text) => self.handle_text_msg(&message, text),
-            Audio(audio) => self.handle_audio_msg(&message, audio),
-            Voice(voice) => self.handle_voice_msg(&message, voice),
-            Photo(photos) => self.handle_image_msg(&message, photos),
-            File(document) => self.handle_document_msg(&message, document),
-            Sticker(sticker) => self.handle_sticker_msg(&message, sticker),
-            Video(video) => self.handle_video_msg(&message, video),
-            Contact(contact) => self.handle_contact_msg(&message, contact),
-            Location(loc) => self.handle_location_msg(&message, loc.latitude, loc.longitude),
-            NewChatParticipant(user) => self.handle_new_chat_msg(&message, user),
-            LeftChatParticipant(user) => self.handle_left_part_msg(&message, user),
-            NewChatTitle(title) => self.handle_new_title_msg(&message, title),
-            NewChatPhoto(photos) => self.handle_chat_photo_msg(&message, photos),
-            DeleteChatPhoto => self.handle_delete_photo_msg(&message, message.chat.clone()),
-            GroupChatCreated => self.handle_group_created_msg(&message, message.chat.clone()),
+        // Handle almost all Telegram API message types
+        match message.kind {
+            Text { ref data, .. } => self.handle_text_msg(&message, data),
+            Audio { ref data } => self.handle_audio_msg(&message, data),
+            Voice { ref data } => self.handle_voice_msg(&message, data),
+            Photo { ref data, .. } => self.handle_image_msg(&message, data),
+            Document { ref data, .. } => self.handle_document_msg(&message, data),
+            Sticker { ref data } => self.handle_sticker_msg(&message, data),
+            Video { ref data, .. } => self.handle_video_msg(&message, data),
+            // VideoNote { ref data } => self.handle_videonote_msg(&message, data),
+            Contact { ref data } => self.handle_contact_msg(&message, data),
+            Location { ref data } => {
+                self.handle_location_msg(&message, data.latitude, data.longitude)
+            }
+            // Venue { ref data } => self.handle_venue_msg(&message, data),
+            NewChatMembers { ref data } => self.handle_new_chat_msg(&message, data),
+            LeftChatMember { ref data } => self.handle_left_part_msg(&message, data),
+            NewChatTitle { ref data } => self.handle_new_title_msg(&message, data),
+            NewChatPhoto { ref data } => self.handle_chat_photo_msg(&message, data),
+            DeleteChatPhoto => {
+                if let Chat::Group(group) = message.chat.clone() {
+                    self.handle_delete_photo_msg(&message, group);
+                }
+            }
+            GroupChatCreated => {
+                if let Chat::Group(group) = message.chat.clone() {
+                    self.handle_group_created_msg(&message, group);
+                }
+            }
+            // Service message: the supergroup has been created. This field can‘t be received in a
+            // message coming through updates, because bot can’t be a member of a supergroup when
+            // it is created. It can only be found in reply_to_message if someone replies to a very
+            // first message in a directly created supergroup.
             SuperGroupChatCreated(migration) => {
                 self.handle_super_group_chat_created_msg(&message, migration)
             }
+            // Service message: the channel has been created. This field can‘t be received in a message
+            // coming through updates, because bot can’t be a member of a channel when it is created.
+            // It can only be found in reply_to_message if someone replies
+            // to a very first message in a channel.
             ChannelChatCreated => {
                 self.handle_channel_chat_created_msg(&message, message.chat.clone())
             }
