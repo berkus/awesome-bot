@@ -1,9 +1,10 @@
+use failure::Error;
 use rustc_serialize::Decodable;
 use telegram_bot::*;
 
 /// Help trait indicating that at least the `end` method is implemented for the SendBuilder structs
 pub trait Finisher<T: Decodable> {
-    fn end(&mut self) -> Result<T>;
+    fn end(&mut self) -> Result<T, Error>;
 }
 
 /// SendBuilder it's a builder struct that allows you to construct answers in
@@ -199,7 +200,7 @@ basesendtype!(SendText,
 addkeyboardfuncs!(SendText, reply_markup);
 
 impl Finisher<Message> for SendText {
-    fn end(&mut self) -> Result<Message> {
+    fn end(&mut self) -> Result<Message, Error> {
         self.send.bot.send_message(
             self.send.chat_id,
             self.text.clone(),
@@ -221,7 +222,7 @@ basesendtype!(SendPhoto,
 addkeyboardfuncs!(SendPhoto, reply_markup);
 
 impl Finisher<Message> for SendPhoto {
-    fn end(&mut self) -> Result<Message> {
+    fn end(&mut self) -> Result<Message, Error> {
         self.send.bot.send_photo(
             self.send.chat_id,
             self.photo.clone(),
@@ -244,7 +245,7 @@ basesendtype!(SendAudio,
 addkeyboardfuncs!(SendAudio, reply_markup);
 
 impl Finisher<Message> for SendAudio {
-    fn end(&mut self) -> Result<Message> {
+    fn end(&mut self) -> Result<Message, Error> {
         self.send.bot.send_audio(
             self.send.chat_id,
             self.audio.clone(),
@@ -267,7 +268,7 @@ basesendtype!(SendVoice,
 addkeyboardfuncs!(SendVoice, reply_markup);
 
 impl Finisher<Message> for SendVoice {
-    fn end(&mut self) -> Result<Message> {
+    fn end(&mut self) -> Result<Message, Error> {
         self.send.bot.send_voice(
             self.send.chat_id,
             self.voice.clone(),
@@ -287,7 +288,7 @@ basesendtype!(SendDocument,
 addkeyboardfuncs!(SendDocument, reply_markup);
 
 impl Finisher<Message> for SendDocument {
-    fn end(&mut self) -> Result<Message> {
+    fn end(&mut self) -> Result<Message, Error> {
         self.send.bot.send_document(
             self.send.chat_id,
             self.document.clone(),
@@ -306,7 +307,7 @@ basesendtype!(SendSticker,
 addkeyboardfuncs!(SendSticker, reply_markup);
 
 impl Finisher<Message> for SendSticker {
-    fn end(&mut self) -> Result<Message> {
+    fn end(&mut self) -> Result<Message, Error> {
         self.send.bot.send_sticker(
             self.send.chat_id,
             self.sticker.clone(),
@@ -327,7 +328,7 @@ basesendtype!(SendVideo,
 addkeyboardfuncs!(SendVideo, reply_markup);
 
 impl Finisher<Message> for SendVideo {
-    fn end(&mut self) -> Result<Message> {
+    fn end(&mut self) -> Result<Message, Error> {
         self.send.bot.send_video(
             self.send.chat_id,
             self.video.clone(),
@@ -345,7 +346,7 @@ basesendtype!(SendForward,
               []);
 
 impl Finisher<Message> for SendForward {
-    fn end(&mut self) -> Result<Message> {
+    fn end(&mut self) -> Result<Message, Error> {
         self.send
             .bot
             .forward_message(self.send.chat_id, self.to, self.msg)
@@ -358,7 +359,7 @@ basesendtype!(SendAction,
               []);
 
 impl Finisher<bool> for SendAction {
-    fn end(&mut self) -> Result<bool> {
+    fn end(&mut self) -> Result<bool, Error> {
         self.send
             .bot
             .send_chat_action(self.send.chat_id, self.action)
@@ -375,7 +376,7 @@ basesendtype!(SendLocation,
 addkeyboardfuncs!(SendLocation, reply_markup);
 
 impl Finisher<Message> for SendLocation {
-    fn end(&mut self) -> Result<Message> {
+    fn end(&mut self) -> Result<Message, Error> {
         self.send.bot.send_location(
             self.send.chat_id,
             self.latitude,
